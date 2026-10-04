@@ -1,6 +1,11 @@
 name: Seed database
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the CSV exports to the data release
+        type: boolean
+        default: false
   schedule:
   # At 04:00pm daily
   - cron: "0 16 * * *"
@@ -26,10 +31,12 @@ jobs:
                   DATABASE_URL: ${{ secrets.DATABASE_URL }}
                   STEAM_KEY: ${{ secrets.STEAM_KEY }}
             - name: Export
+              if: inputs.publish
               run: npm run export
               env:
                   DATABASE_URL: ${{ secrets.DATABASE_URL }}
             - name: Publish to the data release
+              if: inputs.publish
               run: |
                   gh release view data > /dev/null 2>&1 || gh release create data --title "Steam game list" --notes-file .github/data-release.md
                   gh release edit data --notes-file .github/data-release.md

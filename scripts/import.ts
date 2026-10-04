@@ -3,7 +3,7 @@ import { pool } from '../lib/db'
 import { importGames } from '../lib/export'
 
 const DUMP_URL =
-    'https://github.com/KevinBatdorf/steam-api/releases/download/data/games.csv.gz'
+    'https://github.com/delabarra/steam-api/releases/download/data/games.csv.gz'
 
 const run = async () => {
     const res = await fetch(DUMP_URL)
