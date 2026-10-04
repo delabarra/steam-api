@@ -6,21 +6,27 @@ type Game = {
     name: string
 }
 
+const MAX_SEARCH_LENGTH = 100
+const MAX_APPID = 2147483647
+
 const query = async (text: string, values?: unknown[]) =>
     (await pool.query<Game>(text, values)).rows
+
+// Treat % and _ in the search as literal characters in ILIKE patterns
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, '\\$&')
 
 const app = new Hono()
 
 app.get('/api/games', async (c) => {
-    const search = c.req.query('search')
+    const search = c.req.query('search')?.slice(0, MAX_SEARCH_LENGTH)
+    const pattern = search && escapeLike(search)
     let results: Game[] = []
 
     // If a number is coming in, search the appid
-    if (Number.isInteger(Number(search))) {
+    const appid = Number(search)
+    if (Number.isInteger(appid) && appid >= 0 && appid <= MAX_APPID) {
         results.push(
-            ...(await query('SELECT * FROM "Game" WHERE appid = $1', [
-                Number(search),
-            ])),
+            ...(await query('SELECT * FROM "Game" WHERE appid = $1', [appid])),
         )
     }
 
@@ -30,13 +36,13 @@ app.get('/api/games', async (c) => {
             (
                 SELECT appid, name, 1 as score
                 FROM public."Game"
-                WHERE name ILIKE $1 || '%'
+                WHERE name ILIKE $2 || '%'
             )
             UNION ALL
             (
                 SELECT appid, name, 0.99 as score
                 FROM public."Game"
-                WHERE name ILIKE '%' || $1 || '%'
+                WHERE name ILIKE '%' || $2 || '%'
             )
             UNION ALL
             (
@@ -47,7 +53,7 @@ app.get('/api/games', async (c) => {
             order by score desc, name
             limit 100;
             `,
-            [search],
+            [search, pattern],
         )
         results.push(...games)
     } else if (search?.length) {
@@ -55,7 +61,7 @@ app.get('/api/games', async (c) => {
         results.push(
             ...(await query(
                 `SELECT * FROM "Game" WHERE name ILIKE $1 || '%' LIMIT 100`,
-                [search],
+                [pattern],
             )),
         )
     }

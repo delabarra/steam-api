@@ -72,6 +72,20 @@ describe('GET /api/games', () => {
         expect(await search('zzzzqqq')).toEqual([])
     })
 
+    it('treats LIKE wildcards in the search literally', async () => {
+        expect(await search('%')).toEqual([])
+        expect(await search('_a%')).toEqual([])
+    })
+
+    it('ignores numbers outside the appid range', async () => {
+        expect(await search('99999999999')).toEqual([])
+        expect(await search('-730')).toEqual([])
+    })
+
+    it('handles very long searches', async () => {
+        expect(await search('x'.repeat(5000))).toEqual([])
+    })
+
     it('returns 30 random games without a search', async () => {
         const { body } = await request('/api/games')
         expect(body).toHaveLength(30)
